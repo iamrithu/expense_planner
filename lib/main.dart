@@ -1,22 +1,33 @@
-import 'package:expense_planner/widgets/cart.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
 import './widgets/new_transaction.dart';
 import './widgets/transaction_list.dart';
+import './widgets/chart.dart';
 import './models/transaction.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  // WidgetsFlutterBinding.ensureInitialized();
+
+  // SystemChrome.setPreferredOrientations(
+  //     [DeviceOrientation.portraitDown, DeviceOrientation.portraitUp]);  for disable landscap mode
+
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Personal Expenses',
-      home: MyHomePage(),
       theme: ThemeData(
         primarySwatch: Colors.purple,
-        fontFamily: 'Open Sans',
+        // errorColor: Colors.red,
+        fontFamily: 'Quicksand',
+        textTheme: ThemeData.light().textTheme.copyWith(
+              button: TextStyle(color: Colors.white),
+            ),
       ),
+      home: MyHomePage(),
     );
   }
 }
@@ -27,9 +38,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _key1 = GlobalKey();
-
   final List<Transaction> _userTransactions = [];
+
+  bool _switch = false;
 
   List<Transaction> get _recentTransactions {
     return _userTransactions.where((tx) {
@@ -70,20 +81,32 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _deleteTransaction(String id) {
     setState(() {
-      _userTransactions.removeWhere((data) => data.id == id);
+      _userTransactions.removeWhere((tx) => tx.id == id);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLandScap =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     final appBar = AppBar(
-      title: const Text('Personal Expenses'),
+      title: Text(
+        'Personal Expenses',
+      ),
       actions: <Widget>[
         IconButton(
-          icon: const Icon(Icons.add),
+          icon: Icon(Icons.add),
           onPressed: () => _startAddNewTransaction(context),
         ),
       ],
+    );
+
+    final transaction = Container(
+      height: (MediaQuery.of(context).size.height -
+              appBar.preferredSize.height -
+              MediaQuery.of(context).padding.top) *
+          0.7,
+      child: TransactionList(_userTransactions, _deleteTransaction),
     );
     return Scaffold(
       appBar: appBar,
@@ -92,28 +115,48 @@ class _MyHomePageState extends State<MyHomePage> {
           // mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Container(
-                key: _key1,
+            if (isLandScap)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Show Chart'),
+                  Switch.adaptive(
+                      activeTrackColor: Color.fromARGB(255, 166, 197, 131),
+                      focusColor: Colors.pink,
+                      value: _switch,
+                      onChanged: (value) {
+                        setState(() {
+                          _switch = value;
+                        });
+                      })
+                ],
+              ),
+            if (!isLandScap)
+              Container(
                 height: (MediaQuery.of(context).size.height -
                         appBar.preferredSize.height -
                         MediaQuery.of(context).padding.top) *
                     0.3,
-                child: Chart(recentTransactions: _recentTransactions)),
-            Container(
-                height: (MediaQuery.of(context).size.height -
-                        appBar.preferredSize.height -
-                        MediaQuery.of(context).padding.top) *
-                    0.7,
-                child: TransactionList(_userTransactions, _deleteTransaction)),
+                child: Chart(_recentTransactions),
+              ),
+            if (!isLandScap) transaction,
+            if (isLandScap)
+              _switch
+                  ? Container(
+                      height: (MediaQuery.of(context).size.height -
+                              appBar.preferredSize.height -
+                              MediaQuery.of(context).padding.top) *
+                          0.7,
+                      child: Chart(_recentTransactions),
+                    )
+                  : transaction,
           ],
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
-        onPressed: () {
-          _startAddNewTransaction(context);
-        },
+        onPressed: () => _startAddNewTransaction(context),
       ),
     );
   }
